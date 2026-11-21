@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Natural Selection Lab: Rock Pocket Mice</title>
+<style>
+  :root{
+    --bg1:#fff4e6; --bg2:#f1e8ff; --bg3:#e3f6ff;
+    --card:#ffffff; --ink:#1d1a2b; --muted:#625d78; --line:#e3dcf0;
+    --c1:#7c3aed; --c2:#f97316; --c3:#06b6d4; --c4:#ec4899; --c5:#16a34a;
+    --shadow:0 6px 24px rgba(90,50,160,.12);
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg1:#1a1226; --bg2:#10182b; --bg3:#0f2230;
+      --card:#201a30; --ink:#f3effa; --muted:#a69fc0; --line:#3a3150;
+      --c1:#a78bfa; --c2:#fb923c; --c3:#22d3ee; --c4:#f472b6; --c5:#4ade80;
+      --shadow:0 6px 24px rgba(0,0,0,.4);
+    }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.45;
+    background:linear-gradient(135deg,var(--bg1),var(--bg2) 50%,var(--bg3));background-attachment:fixed;min-height:100vh}
+  .wrap{max-width:1180px;margin:0 auto;padding:20px 16px 48px}
+  .nav-back{margin-bottom:12px}
+  .nav-back a{display:inline-flex;align-items:center;gap:6px;font-size:.85rem;font-weight:700;color:var(--c1);text-decoration:none;letter-spacing:.02em;transition:opacity .15s}
+  .nav-back a:hover{opacity:.8;text-decoration:underline}
+  header{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:flex-end;justify-content:space-between;margin-bottom:14px}
+  h1{font-size:clamp(1.4rem,3.2vw,2rem);margin:0;line-height:1.15;
+    background:linear-gradient(90deg,var(--c1),var(--c4),var(--c2));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .sub{color:var(--muted);margin:4px 0 0}
+  .badge{padding:7px 14px;border-radius:999px;font-weight:700;font-size:.88rem;color:#fff;transition:background .4s;box-shadow:var(--shadow)}
+  .badge.dark{background:linear-gradient(90deg,#4c1d95,#7c3aed)}
+  .badge.light{background:linear-gradient(90deg,#f59e0b,#f97316)}
+  .badge.mixed{background:linear-gradient(90deg,#db2777,#7c3aed 55%,#f59e0b)}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;box-shadow:var(--shadow)}
+  .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+  .presets{margin-bottom:12px}
+  .presets .lbl{font-size:.8rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.06em}
+  button{font:inherit;font-size:.92rem;padding:8px 14px;border-radius:999px;border:1px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer;transition:transform .12s,box-shadow .12s,filter .12s}
+  button:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(120,70,200,.2)}
+  button:active{transform:translateY(0) scale(.97)}
+  button:focus-visible,input:focus-visible{outline:3px solid var(--c3);outline-offset:2px}
+  .chip{background:linear-gradient(135deg,rgba(124,58,237,.1),rgba(249,115,22,.12))}
+  .primary{background:linear-gradient(135deg,var(--c1),var(--c4));color:#fff;border-color:transparent;font-weight:700}
+  .go{background:linear-gradient(135deg,var(--c3),var(--c5));color:#fff;border-color:transparent;font-weight:700}
+  .tool[aria-pressed=true]{background:linear-gradient(135deg,var(--c2),var(--c4));color:#fff;border-color:transparent;font-weight:700;box-shadow:0 4px 14px rgba(236,72,153,.35)}
+  .main{display:grid;grid-template-columns:1.35fr 1fr;gap:14px;margin-bottom:14px}
+  @media (max-width:900px){.main{grid-template-columns:1fr}}
+  .stage{position:relative}
+  canvas{width:100%;height:auto;display:block;border-radius:12px}
+  #habitat{touch-action:manipulation;box-shadow:inset 0 0 0 2px rgba(124,58,237,.25)}
+  .toolopts{min-height:40px;margin:10px 0 0;font-size:.88rem;color:var(--muted)}
+  .toolopts b{color:var(--ink)}
+  #toast{position:absolute;left:50%;bottom:14px;transform:translate(-50%,20px);background:rgba(30,16,50,.92);color:#fff;padding:9px 16px;border-radius:999px;font-size:.9rem;opacity:0;pointer-events:none;transition:all .3s;max-width:90%;text-align:center}
+  #toast.show{opacity:1;transform:translate(-50%,0)}
+  #tip{position:fixed;z-index:50;pointer-events:none;background:rgba(30,16,50,.95);color:#fff;padding:8px 11px;border-radius:10px;font-size:.82rem;line-height:1.4;max-width:230px;display:none;box-shadow:0 6px 18px rgba(0,0,0,.35)}
+  .title{font-size:.78rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin:0 0 6px;font-weight:700}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:.78rem;color:var(--muted);margin:6px 0 0;align-items:center}
+  .grad{display:inline-block;width:90px;height:10px;border-radius:5px;vertical-align:middle;margin-right:5px;
+    background:linear-gradient(90deg,hsl(265 90% 55%),hsl(200 90% 55%),hsl(157 90% 55%),hsl(105 90% 55%),hsl(50 90% 55%))}
+  .controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px 20px;margin-bottom:14px}
+  .ctl label{display:flex;justify-content:space-between;font-size:.84rem;color:var(--muted);margin-bottom:4px}
+  .ctl label b{color:var(--ink)}
+  input[type=range]{width:100%;accent-color:var(--c1)}
+  .checks{display:flex;gap:16px;flex-wrap:wrap;font-size:.85rem;color:var(--muted);align-items:center}
+  .checks label{display:flex;gap:6px;align-items:center;cursor:pointer}
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:10px;margin-bottom:14px}
+  .stat{background:var(--card);border:1px solid var(--line);border-top:4px solid var(--sc,var(--c1));border-radius:12px;padding:9px 12px;box-shadow:var(--shadow)}
+  .stat .v{font-size:1.35rem;font-weight:800;color:var(--sc,var(--c1))}
+  .stat .k{font-size:.72rem;color:var(--muted)}
+  .stat:nth-child(1){--sc:var(--c1)} .stat:nth-child(2){--sc:var(--c5)} .stat:nth-child(3){--sc:var(--c3)}
+  .stat:nth-child(4){--sc:var(--c4)} .stat:nth-child(5){--sc:#7c3aed} .stat:nth-child(6){--sc:#16a34a}
+  .stat:nth-child(7){--sc:#d97706} .stat:nth-child(8){--sc:#dc2626}
+  .bottom{display:grid;grid-template-columns:1.3fr 1fr;gap:14px}
+  @media (max-width:900px){.bottom{grid-template-columns:1fr}}
+  .ex h2{font-size:1.05rem;margin:0 0 6px}
+  .ex p{margin:0 0 8px;color:var(--muted)}
+  .ex .watch{background:linear-gradient(90deg,rgba(124,58,237,.1),rgba(236,72,153,.08));padding:8px 10px;border-radius:10px;color:var(--ink)}
+  #log{list-style:none;margin:0;padding:0;max-height:210px;overflow:auto;font-size:.85rem}
+  #log li{padding:5px 8px;border-left:4px solid var(--c1);margin-bottom:5px;background:rgba(124,58,237,.06);border-radius:0 8px 8px 0}
+  #log li.win{border-color:var(--c5);background:rgba(22,163,74,.1);font-weight:600}
+  #log li.info{border-color:var(--c2);background:rgba(249,115,22,.08)}
+  .swatch{width:26px;height:26px;border-radius:50%;border:2px solid var(--ink);display:inline-block;vertical-align:middle}
+  #addColor{background:linear-gradient(90deg,rgb(38,30,52),rgb(244,226,190));height:10px;border-radius:5px;-webkit-appearance:none;appearance:none;width:200px;max-width:100%}
+  #addColor::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;border-radius:50%;background:#fff;border:3px solid var(--c1);cursor:pointer}
+  #addColor::-moz-range-thumb{width:16px;height:16px;border-radius:50%;background:#fff;border:3px solid var(--c1);cursor:pointer}
+  kbd{background:var(--line);border-radius:5px;padding:1px 6px;font-size:.78rem}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="nav-back">
+    <a href="index.html">&larr; Back to Simulations Library</a>
+  </div>
+  <header>
+    <div>
+      <h1>🐭 Natural Selection Lab: Rock Pocket Mice</h1>
+      <p class="sub">Paint the rocks, hunt the mice yourself, and watch evolution reshape the population.</p>
+    </div>
+    <div id="regime" class="badge mixed">Disruptive selection</div>
+  </header>
+
+  <div class="row presets">
+    <span class="lbl">Try a scenario:</span>
+    <button class="chip" data-preset="lava">🌋 Dark lava field</button>
+    <button class="chip" data-preset="dunes">🏖️ Pale sand dunes</button>
+    <button class="chip" data-preset="patchy">🏜️ Patchy desert</button>
+    <button class="chip" data-preset="turbo">⚡ Turbo evolution</button>
+  </div>
+
+  <div class="main">
+    <div class="card">
+      <div class="row" id="tools" role="group" aria-label="Tools">
+        <button class="tool" data-tool="inspect" aria-pressed="true">🔍 Inspect <kbd>1</kbd></button>
+        <button class="tool" data-tool="paint" aria-pressed="false">🪨 Paint rocks <kbd>2</kbd></button>
+        <button class="tool" data-tool="hunt" aria-pressed="false">🦅 Be the predator <kbd>3</kbd></button>
+        <button class="tool" data-tool="add" aria-pressed="false">🐭 Add a mouse <kbd>4</kbd></button>
+      </div>
+      <div class="toolopts" id="toolopts"></div>
+      <div class="stage">
+        <canvas id="habitat"></canvas>
+        <div id="toast" role="status"></div>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <button class="primary" id="play">▶ Start <kbd style="color:#333">Space</kbd></button>
+        <button class="go" id="next">⏭ Next generation <kbd style="color:#333">N</kbd></button>
+        <button id="reset">↺ Reset mice <kbd>R</kbd></button>
+        <button id="habitatNew">🎲 New habitat</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <p class="title">Fur color distribution (hover a bar to spotlight those mice)</p>
+      <canvas id="hist"></canvas>
+      <div class="legend">
+        <span><span class="grad"></span>tag color = fur color</span>
+        <span>┄ generation 0</span>
+        <span style="color:#ec4899">● survival odds</span>
+      </div>
+      <p class="title" style="margin-top:14px">Mean fur color over time (band = ±1 SD)</p>
+      <canvas id="trend"></canvas>
+    </div>
+  </div>
+
+  <div class="card controls">
+    <div class="ctl">
+      <label>Light rocks in habitat <b id="lightV">7 / 15</b></label>
+      <input type="range" id="light" min="0" max="15" value="7" step="1">
+    </div>
+    <div class="ctl">
+      <label>Predator strength <b id="strV">0.8</b></label>
+      <input type="range" id="str" min="0.1" max="1" value="0.8" step="0.05">
+    </div>
+    <div class="ctl">
+      <label>Mutation (variation) <b id="mutV">0.03</b></label>
+      <input type="range" id="mut" min="0" max="0.08" value="0.03" step="0.005">
+    </div>
+    <div class="ctl">
+      <label>Predator learning <b id="learnV">0.6</b></label>
+      <input type="range" id="learn" min="0" max="1" value="0.6" step="0.1" title="Predators form a search image for common colors, which helps rarer colors survive">
+    </div>
+    <div class="ctl">
+      <label>Population size <b id="nV">120</b></label>
+      <input type="range" id="n" min="30" max="300" value="120" step="10">
+    </div>
+    <div class="ctl">
+      <label>Speed <b id="spdV">3x</b></label>
+      <input type="range" id="spd" min="1" max="50" value="3" step="1">
+    </div>
+    <div class="checks">
+      <label><input type="checkbox" id="tags" checked> Color tags</label>
+      <label><input type="checkbox" id="fit" checked> Survival curve</label>
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><div class="v" id="sGen">0</div><div class="k">Generation</div></div>
+    <div class="stat"><div class="v" id="sAlive">0</div><div class="k">Mice alive</div></div>
+    <div class="stat"><div class="v" id="sMean">0.50</div><div class="k">Mean fur (0 dark, 1 light)</div></div>
+    <div class="stat"><div class="v" id="sSd">0.12</div><div class="k">Variation (SD)</div></div>
+    <div class="stat"><div class="v" id="sDark">0%</div><div class="k">Dark mice</div></div>
+    <div class="stat"><div class="v" id="sMid">0%</div><div class="k">Intermediate mice</div></div>
+    <div class="stat"><div class="v" id="sLight">0%</div><div class="k">Light mice</div></div>
+    <div class="stat"><div class="v" id="sEaten">-</div><div class="k">Eaten last generation</div></div>
+  </div>
+
+  <div class="bottom">
+    <div class="card ex">
+      <div data-r="dark">
+        <h2>Directional selection (toward dark)</h2>
+        <p>Directional selection shifts the overall makeup of the population by favoring variants at one extreme of the distribution. Here, lighter mice are selected against because they live among dark rocks, making it harder for them to hide from predators.</p>
+        <p class="watch"><b>Watch for:</b> the whole histogram sliding toward the dark end and the mean line falling.</p>
+      </div>
+      <div data-r="light" hidden>
+        <h2>Directional selection (toward light)</h2>
+        <p>Directional selection shifts the overall makeup of the population by favoring variants at one extreme of the distribution. Here the rocks are pale, so darker mice are selected against because they stand out to predators.</p>
+        <p class="watch"><b>Watch for:</b> the whole histogram sliding toward the light end and the mean line rising.</p>
+      </div>
+      <div data-r="mixed" hidden>
+        <h2>Disruptive selection</h2>
+        <p>Disruptive selection favors variants at both ends of the distribution. These mice have colonized a patchy habitat made up of light and dark rocks, with the result that mice of an intermediate color are selected against.</p>
+        <p class="watch"><b>Watch for:</b> one hump splitting into two peaks with a valley in the middle. The pink survival curve turns into a U-shape.</p>
+      </div>
+      <p style="margin-top:10px;font-size:.85rem">Try this: with everything running, switch to <b>🪨 Paint rocks</b> and flip rocks. The selection type changes live.</p>
+    </div>
+    <div class="card">
+      <p class="title">Generation log</p>
+      <ul id="log"></ul>
+    </div>
+  </div>
+</div>
+<div id="tip"></div>
+
+<script>
+(function(){
+'use strict';
+const $ = id => document.getElementById(id);
+const DPR = Math.min(2, window.devicePixelRatio || 1);
+function setup(cv, w, h){ cv.width = w*DPR; cv.height = h*DPR; const x = cv.getContext('2d'); x.setTransform(DPR,0,0,DPR,0,0); return x; }
+
+const W = 960, H = 540, HW = 640, HH = 340, TW = 640, TH = 200;
+const hx = setup($('habitat'), W, H), gx = setup($('hist'), HW, HH), tx = setup($('trend'), TW, TH);
+const bg = document.createElement('canvas'); const bgx = setup(bg, W, H);
+
+const NR = 15, COLS = 5, ROWS = 3, BINS = 20;
+const clamp = (x,a,b) => Math.max(a, Math.min(b, x));
+function gauss(){ let u=0,v=0; while(!u)u=Math.random(); while(!v)v=Math.random(); return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v); }
+function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+
+/* ---------- colors ---------- */
+const DK=[38,30,52], LT=[244,226,190];
+const rgbArr = c => [0,1,2].map(i => DK[i]+(LT[i]-DK[i])*c);
+const fur = (c,a=1) => { const [r,g,b]=rgbArr(c); return `rgba(${r|0},${g|0},${b|0},${a})`; };
+const tag = (c,a=1,l=55) => `hsla(${265-c*215},90%,${l}%,${a})`;
+function furName(c){ return c<.15?'very dark':c<.38?'dark':c<.62?'medium (intermediate)':c<.85?'light':'very light'; }
+
+let COL = {};
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+function refreshCols(){ COL = {ink:css('--ink'), muted:css('--muted'), line:css('--line'), pink:css('--c4')}; }
+refreshCols();
+
+/* ---------- state ---------- */
+const P = {str:.8, mut:.03, n:120, spd:3, learn:.6};
+const S = {
+  gen:0, pop:[], rocks:[], initHist:[], history:[], log:[], parts:[],
+  running:false, phase:'wait', timer:.5, anim:null, lastEaten:null, manualKills:0, huntTotal:0,
+  eagle:{x:W+120,y:-100,tx:W+120,ty:-100,a:0,hold:0},
+  tool:'inspect', hover:null, hoverRock:null, hlBin:-1, flags:{}, lastRegime:null, batchT:0, statT:0,
+  addColor:.5
+};
+
+/* ---------- predation model ---------- */
+// detection saturates: even a half-matched mouse is quite visible, so mid-colored mice lose on any rock
+const visOf = (c, rc) => 1 - Math.exp(-4*Math.abs(c-rc));
+// predators form a "search image": colors that are common get hunted a bit more, rare ones a bit less
+function updateDens(){ const B=50, h=new Array(B).fill(0), al=alive(); al.forEach(m => h[Math.min(B-1,Math.floor(m.c*B))]++); S.densH=h; S.densN=Math.max(1,al.length); }
+function relDens(c){
+  const h=S.densH; if(!h) return 1; const B=h.length, i=Math.min(B-1,Math.floor(c*B)), k=Math.round(.08*B), lo=Math.max(0,i-k), hi=Math.min(B-1,i+k);
+  let s=0; for(let j=lo;j<=hi;j++) s+=h[j];
+  return clamp((s/S.densN)/((hi-lo+1)/B), 0, 5);
+}
+const learnMult = c => 1 + P.learn*.2*(relDens(c)-1);
+const pRisk = (c, rc) => clamp((.04 + P.str*visOf(c, rc)) * learnMult(c), 0, .97);
+const pEaten = m => pRisk(m.c, m.rock.color);
+function surviveAt(c){ let s=0; for(const r of S.rocks) s += 1 - pRisk(c, r.color); return s/S.rocks.length; }
+
+/* ---------- rocks ---------- */
+const rockTarget = r => r.light ? .86+.1*r.shade : .04+.1*r.shade;
+const nLight = () => S.rocks.filter(r=>r.light).length;
+function regime(){ const f = nLight()/NR; return f<.15 ? 'dark' : f>.85 ? 'light' : 'mixed'; }
+
+function genRocks(){
+  const cw=W/COLS, ch=H/ROWS, ranks = shuffle([...Array(NR).keys()]);
+  S.rocks = [];
+  for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++){
+    const i=r*COLS+c, cx=c*cw+cw/2+(Math.random()-.5)*28, cy=r*ch+ch/2+(Math.random()-.5)*22, R=58+Math.random()*16;
+    const poly=[], K=18, p1=Math.random()*6, p2=Math.random()*6;
+    for(let k=0;k<K;k++){ const a=k/K*Math.PI*2, f=.84+.1*Math.sin(a*3+p1)+.06*Math.sin(a*5+p2)+Math.random()*.04;
+      poly.push([cx+Math.cos(a)*R*f, cy+Math.sin(a)*R*f*.82]); }
+    const cracks=[]; for(let k=0;k<3;k++){ const a=Math.random()*6.28, d=R*(.1+Math.random()*.35);
+      cracks.push([cx+Math.cos(a)*d, cy+Math.sin(a)*d*.8, Math.random()*6.28, R*(.2+Math.random()*.2)]); }
+    S.rocks.push({i,x:cx,y:cy,r:R,poly,cracks,rank:ranks[i],shade:Math.random(),light:false,color:0,target:0});
+  }
+  applyLight(+$('light').value, true);
+}
+function applyLight(n, snap){
+  S.rocks.forEach(r => { r.light = r.rank < n; r.target = rockTarget(r); if(snap) r.color = r.target; });
+  onRocksChanged();
+}
+function onRocksChanged(){
+  const n = nLight();
+  $('light').value = n; $('lightV').textContent = n + ' / ' + NR;
+  const reg = regime();
+  const b = $('regime');
+  b.className = 'badge ' + reg;
+  b.textContent = reg==='dark' ? 'Directional selection → darker fur' : reg==='light' ? 'Directional selection → lighter fur' : 'Disruptive selection → both extremes';
+  document.querySelectorAll('.ex [data-r]').forEach(e => e.hidden = e.dataset.r !== reg);
+  if(S.lastRegime && S.lastRegime !== reg){ S.flags = {}; addLog('🌍 Habitat changed: now ' + b.textContent.toLowerCase(), 'info'); }
+  S.lastRegime = reg;
+}
+function inPoly(p,x,y){ let ins=false; for(let i=0,j=p.length-1;i<p.length;j=i++){ const xi=p[i][0],yi=p[i][1],xj=p[j][0],yj=p[j][1];
+  if(((yi>y)!==(yj>y)) && (x<(xj-xi)*(y-yi)/(yj-yi)+xi)) ins=!ins; } return ins; }
+const pickRock = (x,y) => S.rocks.find(r => inPoly(r.poly,x,y)) || null;
+function pickMouse(x,y){ let best=null,bd=18*18; for(const m of S.pop){ if(m.dead) continue; const d=(m.x-x)**2+(m.y-y)**2; if(d<bd){bd=d;best=m;} } return best; }
+
+/* ---------- mice ---------- */
+function newMouse(c, rock, x, y){
+  const m = {c, rock:null, x:0, y:0, ang:Math.random()*6.28, sp:6+Math.random()*10, pause:Math.random(), dead:false, fade:1, born:0};
+  placeMouse(m, rock, x, y); return m;
+}
+function placeMouse(m, rock, x, y){
+  rock = rock || S.rocks[Math.floor(Math.random()*S.rocks.length)];
+  m.rock = rock;
+  if(x !== undefined){ m.x=x; m.y=y; }
+  else { const a=Math.random()*6.28, d=Math.sqrt(Math.random())*rock.r*.5; m.x=rock.x+Math.cos(a)*d; m.y=rock.y+Math.sin(a)*d*.8; }
+}
+const alive = () => S.pop.filter(m => !m.dead);
+function histogram(pop){ const h=new Array(BINS).fill(0); pop.forEach(m => h[Math.min(BINS-1,Math.floor(m.c*BINS))]++); return h.map(v => v/Math.max(1,pop.length)); }
+function stats(pop){
+  const n=pop.length; if(!n) return {mean:0,sd:0,dark:0,mid:0,light:0,n:0};
+  const mean=pop.reduce((s,m)=>s+m.c,0)/n, sd=Math.sqrt(pop.reduce((s,m)=>s+(m.c-mean)**2,0)/n);
+  let d=0,mi=0,l=0; pop.forEach(m => { if(m.c<1/3)d++; else if(m.c>2/3)l++; else mi++; });
+  return {mean,sd,dark:d/n,mid:mi/n,light:l/n,n};
+}
+
+/* ---------- particles ---------- */
+function burst(x,y,col,n=10,speed=150){
+  for(let i=0;i<n;i++) S.parts.push({x,y,vx:(Math.random()-.5)*speed,vy:(Math.random()-.5)*speed-30,life:.5+Math.random()*.5,t:0,col,size:2+Math.random()*3.5});
+  if(S.parts.length>500) S.parts.splice(0, S.parts.length-500);
+}
+
+/* ---------- simulation steps ---------- */
+function eat(m, byUser){
+  if(m.dead) return;
+  m.dead = true; m.fade = 1;
+  burst(m.x, m.y, tag(m.c,1,60), 12, 190); burst(m.x, m.y, 'rgba(255,255,255,.9)', 4, 120);
+  S.eagle.tx = m.x; S.eagle.ty = m.y;
+  if(byUser){ S.manualKills++; S.huntTotal++; S.eagle.hold = .7; updateToolOpts(); }
+}
+function startPredation(){
+  updateDens();
+  const victims = [];
+  if(S.manualKills === 0) S.pop.forEach(m => { if(!m.dead && Math.random() < pEaten(m)) victims.push(m); });
+  S.anim = {victims, i:0, t:0, per: victims.length ? Math.min(.35, 2.4/P.spd/victims.length) : 1};
+  if(victims.length){ S.eagle.tx = victims[0].x; S.eagle.ty = victims[0].y; }
+  S.phase = 'hunt';
+}
+function reproduce(quiet){
+  let surv = S.pop.filter(m => !m.dead);
+  S.lastEaten = (S.pop.length - surv.length) / Math.max(1,S.pop.length);
+  if(surv.length < 2) surv = S.pop.slice().sort((a,b)=>pEaten(a)-pEaten(b)).slice(0,2);
+  const next = [];
+  for(let i=0;i<P.n;i++){
+    const par = surv[Math.floor(Math.random()*surv.length)];
+    next.push(newMouse(clamp(par.c + gauss()*P.mut, 0, 1)));
+  }
+  S.pop = next; S.gen++; S.manualKills = 0;
+  const st = stats(S.pop); S.history.push({mean:st.mean, sd:st.sd});
+  if(!quiet){ for(let i=0;i<Math.min(25,next.length);i++){ const m=next[i]; burst(m.x,m.y,tag(m.c,1,65),3,70); } }
+  if(!quiet || S.gen % 10 === 0) addLog(`Gen ${S.gen}: ${Math.round(S.lastEaten*100)}% eaten · mean fur ${st.mean.toFixed(2)} · SD ${st.sd.toFixed(2)}`);
+  milestones(st);
+}
+function instantGen(){
+  updateDens();
+  if(S.manualKills === 0) S.pop.forEach(m => { m.dead = Math.random() < pEaten(m); });
+  reproduce(true);
+}
+function milestones(st){
+  const reg = regime(), f = S.flags;
+  if(reg==='dark' && st.mean<.2 && !f.a){ f.a=1; toast('🎉 The population adapted to dark rocks!'); addLog('🎉 Adapted: mean fur ' + st.mean.toFixed(2), 'win'); }
+  if(reg==='light' && st.mean>.8 && !f.a){ f.a=1; toast('🎉 The population adapted to pale rocks!'); addLog('🎉 Adapted: mean fur ' + st.mean.toFixed(2), 'win'); }
+  if(reg==='mixed' && st.mid<.12 && st.dark>.15 && st.light>.15 && !f.a){ f.a=1; toast('🎉 Two camps! Disruptive selection split the population'); addLog('🎉 Population split into dark and light camps', 'win'); }
+}
+function nextGen(){
+  if(S.phase === 'wait') startPredation();
+  else if(S.phase === 'hunt'){ const a=S.anim; while(a.i < a.victims.length) eat(a.victims[a.i++]); S.phase='breed'; S.timer=.01; }
+  else if(S.phase === 'breed'){ reproduce(false); S.phase='wait'; S.timer=.3; }
+}
+
+/* ---------- update loop ---------- */
+function update(dt){
+  // rocks ease toward their target color
+  for(const r of S.rocks) r.color += (r.target - r.color) * (1 - Math.exp(-6*dt));
+  // mice wander
+  for(const m of S.pop){
+    if(m.dead){ m.fade -= dt*2.2; continue; }
+    if(m.born < 1) m.born = Math.min(1, m.born + dt*3);
+    m.pause -= dt; if(m.pause > 0) continue;
+    m.ang += (Math.random()-.5)*dt*7;
+    m.x += Math.cos(m.ang)*m.sp*dt; m.y += Math.sin(m.ang)*m.sp*dt;
+    const dx=(m.x-m.rock.x)/(m.rock.r*.58), dy=(m.y-m.rock.y)/(m.rock.r*.58*.82);
+    if(dx*dx+dy*dy > 1){ m.ang = Math.atan2(m.rock.y-m.y, m.rock.x-m.x) + (Math.random()-.5)*.8; m.x += Math.cos(m.ang)*3; m.y += Math.sin(m.ang)*3; }
+    if(Math.random() < dt*.4) m.pause = .3 + Math.random()*1.2;
+  }
+  // particles
+  for(let i=S.parts.length-1;i>=0;i--){ const p=S.parts[i]; p.t+=dt; if(p.t>=p.life){ S.parts.splice(i,1); continue; } p.x+=p.vx*dt; p.y+=p.vy*dt; p.vy+=140*dt; p.vx*=.98; }
+  // eagle
+  const e=S.eagle, active = S.phase==='hunt' || e.hold>0;
+  if(e.hold>0) e.hold-=dt;
+  e.a += ((active?1:0) - e.a) * (1 - Math.exp(-8*dt));
+  const k = 1 - Math.exp(-(active?9:2)*dt);
+  if(!active){ e.tx = W+140; e.ty = -120; }
+  e.x += (e.tx-e.x)*k; e.y += (e.ty-e.y)*k;
+  // generation state machine
+  if(S.phase === 'wait'){
+    if(S.running){
+      if(P.spd > 5){ S.batchT -= dt; if(S.batchT <= 0){ S.batchT = .06; const n = Math.round(P.spd/5); for(let i=0;i<n;i++) instantGen(); } }
+      else { S.timer -= dt; if(S.timer <= 0) startPredation(); }
+    }
+  } else if(S.phase === 'hunt'){
+    const a = S.anim; a.t += dt;
+    while(a.i < a.victims.length && a.t >= a.per){ eat(a.victims[a.i++]); a.t -= a.per; }
+    if(a.i >= a.victims.length){ S.phase='breed'; S.timer = Math.max(.3, .9/P.spd); }
+  } else if(S.phase === 'breed'){
+    S.timer -= dt; if(S.timer <= 0){ reproduce(false); S.phase='wait'; S.timer = Math.max(.2, 1/P.spd); }
+  }
+  S.statT -= dt; if(S.statT <= 0){ S.statT = .12; if(S.phase==='wait') updateDens(); updateStats(); }
+}
+
+/* ---------- drawing: habitat ---------- */
+function buildBackground(){
+  const c = bgx;
+  const g = c.createLinearGradient(0,0,W,H); g.addColorStop(0,'#f0bd74'); g.addColorStop(.5,'#dc9a52'); g.addColorStop(1,'#bf7a3c');
+  c.fillStyle = g; c.fillRect(0,0,W,H);
+  for(let i=0;i<500;i++){ c.fillStyle = Math.random()<.5 ? 'rgba(90,40,10,.10)' : 'rgba(255,230,170,.16)'; c.fillRect(Math.random()*W, Math.random()*H, 1+Math.random()*3, 1+Math.random()*2); }
+  const cw=W/COLS, ch=H/ROWS;
+  const flowers = ['#ec4899','#facc15','#fb7185','#a78bfa'];
+  for(let j=0;j<=ROWS;j++) for(let i=0;i<=COLS;i++){
+    const x=i*cw, y=j*ch;
+    if(i>0&&i<COLS&&j>0&&j<ROWS && (i+j)%2===0) cactus(c,x,y+12,.9+Math.random()*.3);
+    else if(i>0&&i<COLS&&j>0&&j<ROWS) tuft(c,x,y,flowers[(i*3+j)%4]);
+  }
+  for(let i=0;i<10;i++){ const x=Math.random()*W, y=Math.random()*H; tuft(c,x,y,flowers[i%4],true); }
+  const v = c.createRadialGradient(W/2,H/2,H*.35,W/2,H/2,W*.62); v.addColorStop(0,'rgba(80,20,110,0)'); v.addColorStop(1,'rgba(80,20,110,.28)');
+  c.fillStyle = v; c.fillRect(0,0,W,H);
+}
+function cactus(c,x,y,s){
+  c.save(); c.translate(x,y); c.lineCap='round'; c.lineJoin='round';
+  const draw = (col,w) => { c.strokeStyle=col; c.lineWidth=w*s; c.beginPath(); c.moveTo(0,0); c.lineTo(0,-30*s); c.moveTo(0,-10*s); c.lineTo(-13*s,-10*s); c.lineTo(-13*s,-22*s); c.moveTo(0,-16*s); c.lineTo(12*s,-16*s); c.lineTo(12*s,-26*s); c.stroke(); };
+  draw('#1f6b3a', 13); draw('#3fae63', 9);
+  c.fillStyle='#ec4899'; c.beginPath(); c.arc(0,-36*s,4*s,0,6.28); c.fill(); c.fillStyle='#fde047'; c.beginPath(); c.arc(0,-36*s,1.6*s,0,6.28); c.fill();
+  c.restore();
+}
+function tuft(c,x,y,col,small){
+  c.save(); c.translate(x,y); c.strokeStyle='#3b8f4e'; c.lineWidth=2; c.lineCap='round';
+  for(let k=-2;k<=2;k++){ c.beginPath(); c.moveTo(k*3,0); c.lineTo(k*5,-9-Math.abs(k)); c.stroke(); }
+  if(!small){ c.fillStyle=col; for(let k=0;k<3;k++){ c.beginPath(); c.arc(-6+k*6,-12+(k%2)*3,3,0,6.28); c.fill(); } }
+  c.restore();
+}
+function rockPath(c,r,dx=0,dy=0){ c.beginPath(); r.poly.forEach((p,i) => i ? c.lineTo(p[0]+dx,p[1]+dy) : c.moveTo(p[0]+dx,p[1]+dy)); c.closePath(); }
+function drawRock(r){
+  const c=hx;
+  rockPath(c,r,7,11); c.fillStyle='rgba(70,25,10,.3)'; c.fill();
+  const [R,G,B]=rgbArr(r.color);
+  const gr = c.createRadialGradient(r.x-r.r*.3, r.y-r.r*.35, r.r*.1, r.x, r.y, r.r*1.05);
+  gr.addColorStop(0, `rgb(${Math.min(255,R*1.22+22)|0},${Math.min(255,G*1.22+22)|0},${Math.min(255,B*1.22+22)|0})`);
+  gr.addColorStop(1, `rgb(${R*.86|0},${G*.86|0},${B*.86|0})`);
+  rockPath(c,r); c.fillStyle=gr; c.fill();
+  c.lineJoin='round'; c.lineWidth=3; c.strokeStyle='rgba(30,10,40,.4)'; c.stroke();
+  c.strokeStyle = r.color>.5 ? 'rgba(90,60,30,.22)' : 'rgba(255,255,255,.12)'; c.lineWidth=1.5;
+  for(const k of r.cracks){ c.beginPath(); c.moveTo(k[0],k[1]); c.lineTo(k[0]+Math.cos(k[2])*k[3], k[1]+Math.sin(k[2])*k[3]*.8); c.stroke(); }
+  if(S.tool==='paint' && S.hoverRock===r){
+    rockPath(c,r); c.lineWidth=4; c.setLineDash([9,6]); c.strokeStyle = r.light ? '#7c3aed' : '#fde047'; c.stroke(); c.setLineDash([]);
+    c.font='700 15px system-ui,sans-serif'; c.textAlign='center'; c.fillStyle = r.light ? '#7c3aed' : '#fde047';
+    c.fillText(r.light ? 'click → dark' : 'click → light', r.x, r.y+r.r*.82+20);
+  }
+}
+function drawMouse(m, time){
+  const c=hx; if(m.dead && m.fade<=0) return;
+  const showTags = $('tags').checked;
+  let alpha = m.dead ? clamp(m.fade,0,1) : 1;
+  const inHl = S.hlBin>=0 && Math.min(BINS-1,Math.floor(m.c*BINS)) === S.hlBin;
+  if(S.hlBin>=0 && !inHl) alpha *= .3;
+  const s = .35 + .65*m.born + (m.dead ? (1-m.fade)*.5 : 0);
+  c.save(); c.globalAlpha = alpha; c.translate(m.x, m.y); c.scale(s,s);
+  if(showTags){ c.beginPath(); c.arc(0,0,16,0,6.28); c.fillStyle=tag(m.c,.28); c.fill(); c.lineWidth=2.5; c.strokeStyle=tag(m.c,.95); c.stroke(); }
+  if(inHl){ c.beginPath(); c.arc(0,0,19+Math.sin(time*8)*2,0,6.28); c.lineWidth=3; c.strokeStyle='#fff'; c.stroke(); }
+  if(S.hover===m){ c.beginPath(); c.arc(0,0,21,0,6.28); c.lineWidth=3; c.strokeStyle='#fff'; c.stroke(); }
+  c.rotate(m.ang);
+  c.lineWidth=1.2; c.strokeStyle='rgba(0,0,0,.5)'; c.fillStyle=fur(m.c);
+  c.beginPath(); c.moveTo(-10,0); c.quadraticCurveTo(-18,6,-24,2); c.stroke();
+  c.beginPath(); c.ellipse(0,0,11,6.5,0,0,6.28); c.fill(); c.stroke();
+  c.beginPath(); c.ellipse(11,0,5.5,4.5,0,0,6.28); c.fill(); c.stroke();
+  c.beginPath(); c.arc(9,-4,2.2,0,6.28); c.fill(); c.stroke();
+  c.fillStyle='#111'; c.beginPath(); c.arc(13,-1.5,.9,0,6.28); c.fill();
+  c.fillStyle='#f9a8d4'; c.beginPath(); c.arc(16,0,1,0,6.28); c.fill();
+  c.restore();
+}
+function eagleShape(c,s,f){
+  c.beginPath(); c.moveTo(0,-22*s);
+  c.quadraticCurveTo(10*s,-10*s,50*s,-8*s+f*10*s); c.quadraticCurveTo(55*s,6*s+f*14*s,30*s,10*s);
+  c.quadraticCurveTo(14*s,6*s,8*s,24*s); c.lineTo(0,34*s); c.lineTo(-8*s,24*s);
+  c.quadraticCurveTo(-14*s,6*s,-30*s,10*s); c.quadraticCurveTo(-55*s,6*s+f*14*s,-50*s,-8*s+f*10*s);
+  c.quadraticCurveTo(-10*s,-10*s,0,-22*s); c.closePath();
+}
+function drawEagle(time){
+  const e=S.eagle; if(e.a < .03) return; const c=hx, f=Math.sin(time*11)*.5;
+  c.save(); c.globalAlpha=e.a*.35; c.translate(e.x+34,e.y+48); eagleShape(c,1.1,f); c.fillStyle='#2a0a3a'; c.fill(); c.restore();
+  c.save(); c.globalAlpha=e.a; c.translate(e.x,e.y-6); eagleShape(c,1.15,f); c.fillStyle='#7c3f12'; c.fill(); c.lineWidth=2; c.strokeStyle='#3b1a06'; c.stroke();
+  c.fillStyle='#fff7e6'; c.beginPath(); c.arc(0,-20*1.15,6,0,6.28); c.fill(); c.fillStyle='#f59e0b'; c.beginPath(); c.moveTo(-2.5,-26); c.lineTo(2.5,-26); c.lineTo(0,-33); c.fill(); c.restore();
+  if(S.phase==='hunt' || e.hold>0){ c.save(); c.globalAlpha=e.a; c.strokeStyle='#ef4444'; c.lineWidth=2.5; const r=20+Math.sin(time*14)*3;
+    c.beginPath(); c.arc(e.tx,e.ty,r,0,6.28); c.moveTo(e.tx-r-6,e.ty); c.lineTo(e.tx+r+6,e.ty); c.moveTo(e.tx,e.ty-r-6); c.lineTo(e.tx,e.ty+r+6); c.stroke(); c.restore(); }
+}
+function drawHabitat(time){
+  const c=hx; c.drawImage(bg,0,0,W,H);
+  S.rocks.forEach(drawRock);
+  S.pop.slice().sort((a,b)=>a.y-b.y).forEach(m => drawMouse(m,time));
+  for(const p of S.parts){ c.globalAlpha = 1 - p.t/p.life; c.fillStyle=p.col; c.beginPath(); c.arc(p.x,p.y,p.size*(1-p.t/p.life*.5),0,6.28); c.fill(); }
+  c.globalAlpha = 1;
+  drawEagle(time);
+}
+
+/* ---------- drawing: charts ---------- */
+function drawHist(){
+  const c=gx, w=HW, h=HH, pl=40, pr=40, pt=14, pb=56;
+  c.clearRect(0,0,w,h);
+  const al=alive(), cur=histogram(al), ini=S.initHist;
+  const ymax = Math.max(.25, ...cur, ...ini)*1.15;
+  const pw=w-pl-pr, ph=h-pt-pb, bw=pw/BINS;
+  c.font='12px system-ui,sans-serif'; c.lineWidth=1;
+  for(let i=0;i<=4;i++){ const y=pt+ph-ph*i/4; c.strokeStyle=COL.line; c.beginPath(); c.moveTo(pl,y); c.lineTo(w-pr,y); c.stroke();
+    c.fillStyle=COL.muted; c.textAlign='right'; c.fillText(Math.round(ymax*i/4*100)+'%', pl-6, y+4); }
+  cur.forEach((v,i) => {
+    const bh=v/ymax*ph, x=pl+i*bw, y=pt+ph-bh, mid=(i+.5)/BINS;
+    const g=c.createLinearGradient(0,y,0,y+Math.max(bh,1)); g.addColorStop(0,tag(mid,1,62)); g.addColorStop(1,tag(mid,1,42));
+    c.fillStyle=g; c.fillRect(x+1.5,y,bw-3,bh);
+    if(S.hlBin===i){ c.strokeStyle=COL.ink; c.lineWidth=2.5; c.strokeRect(x+1.5,y,bw-3,bh); }
+  });
+  c.strokeStyle=COL.ink; c.lineWidth=1.6; c.setLineDash([5,4]); c.beginPath();
+  ini.forEach((v,i) => { const x0=pl+i*bw, y=pt+ph-v/ymax*ph; i ? c.lineTo(x0,y) : c.moveTo(x0,y); c.lineTo(x0+bw,y); });
+  c.stroke(); c.setLineDash([]);
+  if($('fit').checked){
+    c.strokeStyle=COL.pink; c.lineWidth=3; c.lineJoin='round'; c.beginPath();
+    for(let i=0;i<=60;i++){ const cc=i/60, x=pl+pw*cc, y=pt+ph*(1-surviveAt(cc)); i ? c.lineTo(x,y) : c.moveTo(x,y); }
+    c.stroke();
+    c.fillStyle=COL.pink; c.textAlign='left';
+    [0,.5,1].forEach(v => c.fillText(Math.round(v*100)+'%', w-pr+6, pt+ph*(1-v)+4));
+  }
+  const y0=pt+ph+8, gg=c.createLinearGradient(pl,0,pl+pw,0); gg.addColorStop(0,fur(0)); gg.addColorStop(1,fur(1));
+  c.fillStyle=gg; c.fillRect(pl,y0,pw,13); c.strokeStyle=COL.line; c.lineWidth=1; c.strokeRect(pl,y0,pw,13);
+  c.fillStyle=COL.ink; c.globalAlpha=.55;
+  for(const r of S.rocks){ const x=pl+pw*clamp(r.color,0,1); c.beginPath(); c.moveTo(x,y0+15); c.lineTo(x-4,y0+22); c.lineTo(x+4,y0+22); c.fill(); }
+  c.globalAlpha=1; c.fillStyle=COL.muted;
+  c.textAlign='left'; c.fillText('Dark fur', pl, h-6); c.textAlign='right'; c.fillText('Light fur', w-pr, h-6);
+  c.textAlign='center'; c.fillText('▲ = where the rocks sit on the scale', pl+pw/2, h-6);
+}
+function drawTrend(){
+  const c=tx, w=TW, h=TH, pl=40, pr=12, pt=10, pb=26;
+  c.clearRect(0,0,w,h);
+  const pw=w-pl-pr, ph=h-pt-pb, xmax=Math.max(60,S.history.length-1);
+  c.font='12px system-ui,sans-serif'; c.lineWidth=1;
+  [0,.5,1].forEach(v => { const y=pt+ph*(1-v); c.strokeStyle=COL.line; c.beginPath(); c.moveTo(pl,y); c.lineTo(w-pr,y); c.stroke(); c.fillStyle=COL.muted; c.textAlign='right'; c.fillText(v.toFixed(1),pl-6,y+4); });
+  const X=i=>pl+pw*i/xmax, Y=v=>pt+ph*(1-clamp(v,0,1));
+  const hs=S.history;
+  if(hs.length>1){
+    c.fillStyle='rgba(236,72,153,.2)'; c.beginPath();
+    hs.forEach((d,i) => { i ? c.lineTo(X(i),Y(d.mean+d.sd)) : c.moveTo(X(i),Y(d.mean+d.sd)); });
+    for(let i=hs.length-1;i>=0;i--) c.lineTo(X(i),Y(hs[i].mean-hs[i].sd));
+    c.closePath(); c.fill();
+    const g=c.createLinearGradient(0,pt,0,pt+ph); g.addColorStop(0,'#f59e0b'); g.addColorStop(.5,'#ec4899'); g.addColorStop(1,'#7c3aed');
+    c.strokeStyle=g; c.lineWidth=3; c.lineJoin='round'; c.beginPath();
+    hs.forEach((d,i) => { i ? c.lineTo(X(i),Y(d.mean)) : c.moveTo(X(i),Y(d.mean)); }); c.stroke();
+    const l=hs[hs.length-1]; c.fillStyle='#ec4899'; c.beginPath(); c.arc(X(hs.length-1),Y(l.mean),4.5,0,6.28); c.fill();
+  }
+  c.fillStyle=COL.muted; c.textAlign='left'; c.fillText('Gen 0',pl,h-7); c.textAlign='right'; c.fillText('Gen '+xmax,w-pr,h-7); c.textAlign='center'; c.fillText('Generation',pl+pw/2,h-7);
+}
+function updateStats(){
+  const al=alive(), st=stats(al);
+  $('sGen').textContent=S.gen; $('sAlive').textContent=al.length;
+  $('sMean').textContent=st.mean.toFixed(2); $('sSd').textContent=st.sd.toFixed(2);
+  $('sDark').textContent=Math.round(st.dark*100)+'%'; $('sMid').textContent=Math.round(st.mid*100)+'%'; $('sLight').textContent=Math.round(st.light*100)+'%';
+  $('sEaten').textContent = S.lastEaten===null ? '-' : Math.round(S.lastEaten*100)+'%';
+}
+
+/* ---------- UI helpers ---------- */
+let toastT;
+function toast(msg){ const t=$('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'),2800); }
+function addLog(msg,cls){ S.log.unshift({msg,cls}); if(S.log.length>60) S.log.pop(); renderLog(); }
+function renderLog(){ $('log').innerHTML = S.log.slice(0,12).map(l => `<li class="${l.cls||''}">${l.msg}</li>`).join(''); }
+const tip=$('tip');
+function showTip(html,e){ tip.innerHTML=html; tip.style.display='block'; const w=tip.offsetWidth; tip.style.left=Math.min(e.clientX+14, innerWidth-w-8)+'px'; tip.style.top=(e.clientY+16)+'px'; }
+const hideTip = () => { tip.style.display='none'; };
+
+function updateToolOpts(){
+  const t=S.tool, o=$('toolopts');
+  if(t==='inspect') o.innerHTML = 'Hover over a mouse to see how visible it is to predators. Hover the histogram bars to spotlight mice of that color.';
+  else if(t==='paint') o.innerHTML = '<b>Click a rock</b> to flip it between dark and light. Drag the "Light rocks" slider for bulk changes. The selection type updates live.';
+  else if(t==='hunt') o.innerHTML = `<b>You are the eagle!</b> Click mice to eat them, then press <b>Next generation</b>. Which ones will you pick? Eaten by you so far: <b>${S.huntTotal}</b>`;
+  else { o.innerHTML = '<b>Click a rock</b> to drop a mouse with this fur: <input type="range" id="addColor" min="0" max="100" value="'+Math.round(S.addColor*100)+'" aria-label="Fur color"> <span class="swatch" id="addSw"></span>';
+    const a=$('addColor'), upd=()=>{ S.addColor=+a.value/100; $('addSw').style.background=fur(S.addColor); }; a.oninput=upd; upd(); }
+}
+function setTool(t){
+  S.tool=t; document.querySelectorAll('.tool').forEach(b => b.setAttribute('aria-pressed', b.dataset.tool===t));
+  const cur={inspect:'default',paint:'pointer',hunt:'crosshair',add:'copy'}; $('habitat').style.cursor=cur[t];
+  if(t==='hunt' && S.running){ stop(); toast('Paused: hunt the mice you want, then press Next generation'); }
+  S.hover=null; S.hoverRock=null; hideTip(); updateToolOpts();
+}
+
+/* ---------- controls ---------- */
+function start(){ S.running=true; $('play').innerHTML='⏸ Pause <kbd style="color:#333">Space</kbd>'; }
+function stop(){ S.running=false; $('play').innerHTML='▶ Start <kbd style="color:#333">Space</kbd>'; }
+function resetMice(){
+  stop(); S.gen=0; S.history=[]; S.log=[]; S.parts=[]; S.flags={}; S.manualKills=0; S.huntTotal=0; S.lastEaten=null; S.anim=null; S.phase='wait'; S.timer=.5; S.hlBin=-1;
+  S.pop=[]; for(let i=0;i<P.n;i++) S.pop.push(newMouse(clamp(.5+gauss()*.12,0,1)));
+  S.pop.forEach(m => m.born=1);
+  S.initHist=histogram(S.pop); const st=stats(S.pop); S.history.push({mean:st.mean,sd:st.sd});
+  renderLog(); updateToolOpts(); updateStats();
+}
+function newHabitat(){ genRocks(); S.pop.forEach(m => placeMouse(m)); toast('🎲 New habitat generated'); }
+$('play').onclick = () => S.running ? stop() : start();
+$('next').onclick = nextGen;
+$('reset').onclick = resetMice;
+$('habitatNew').onclick = newHabitat;
+document.querySelectorAll('.tool').forEach(b => b.onclick = () => setTool(b.dataset.tool));
+$('light').oninput = e => applyLight(+e.target.value, false);
+$('n').oninput   = e => { P.n=+e.target.value; $('nV').textContent=P.n; };
+$('str').oninput = e => { P.str=+e.target.value; $('strV').textContent=P.str.toFixed(2).replace(/0$/,''); };
+$('mut').oninput = e => { P.mut=+e.target.value; $('mutV').textContent=P.mut.toFixed(3).replace(/0$/,''); };
+$('learn').oninput = e => { P.learn=+e.target.value; $('learnV').textContent=P.learn.toFixed(1); };
+$('spd').oninput = e => { P.spd=+e.target.value; $('spdV').textContent=P.spd+'x'; };
+
+function setSlider(id,v){ const el=$(id); el.value=v; el.dispatchEvent(new Event('input')); }
+const PRESETS = {
+  lava:   {light:0,  str:.8, mut:.03, spd:3, msg:'🌋 Dark lava field: light mice stand out'},
+  dunes:  {light:15, str:.8, mut:.03, spd:3, msg:'🏖️ Pale dunes: dark mice stand out'},
+  patchy: {light:7,  str:.8, mut:.03, spd:3, msg:'🏜️ Patchy desert: the middle is the worst place to be'},
+  turbo:  {light:7,  str:1,  mut:.05, spd:8, msg:'⚡ Turbo evolution: strong predators, fast mutation'}
+};
+document.querySelectorAll('[data-preset]').forEach(b => b.onclick = () => {
+  const p=PRESETS[b.dataset.preset];
+  setSlider('str',p.str); setSlider('mut',p.mut); setSlider('spd',p.spd);
+  applyLight(p.light,false); resetMice(); start(); toast(p.msg);
+});
+$('tags').onchange = () => {};
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', refreshCols);
+
+/* ---------- habitat pointer interaction ---------- */
+const HC=$('habitat');
+function local(e){ const r=HC.getBoundingClientRect(); return {x:(e.clientX-r.left)*W/r.width, y:(e.clientY-r.top)*H/r.height}; }
+function mouseTipHtml(m){
+  const v=visOf(m.c,m.rock.color), p=pEaten(m);
+  return `<b>🐭 Fur ${m.c.toFixed(2)}</b> · ${furName(m.c)}<br>Sitting on a <b>${m.rock.light?'light':'dark'}</b> rock<br>Visible to predator: <b>${Math.round(v*100)}%</b><br>Chance of being eaten: <b>${Math.round(p*100)}%</b>`;
+}
+function hoverAt(e){
+  const p=local(e); S.hover=pickMouse(p.x,p.y); S.hoverRock=pickRock(p.x,p.y);
+  if(S.tool==='paint' && S.hoverRock) hideTip();
+  else if(S.hover && (S.tool==='inspect' || S.tool==='hunt')) showTip(mouseTipHtml(S.hover), e);
+  else if(S.tool==='add' && S.hoverRock) showTip('Click to drop a mouse here', e);
+  else hideTip();
+  return p;
+}
+HC.addEventListener('pointermove', hoverAt);
+HC.addEventListener('pointerleave', () => { S.hover=null; S.hoverRock=null; hideTip(); });
+HC.addEventListener('click', e => {
+  const p = hoverAt(e);
+  if(e.pointerType==='touch') setTimeout(hideTip, 2000);
+  if(S.tool==='paint'){
+    const r=S.hoverRock; if(!r) return;
+    r.light=!r.light; r.target=rockTarget(r); burst(r.x,r.y,r.light?'#fde68a':'#7c3aed',16,200); onRocksChanged();
+  } else if(S.tool==='hunt'){
+    if(S.hover){ const first=S.manualKills===0; eat(S.hover,true); S.hover=null; hideTip(); if(first) toast('Nice catch! Eat more, then press Next generation'); }
+  } else if(S.tool==='add'){
+    const r=pickRock(p.x,p.y); if(!r){ toast('Drop mice on a rock 🪨'); return; }
+    const m=newMouse(S.addColor, r, p.x, p.y); S.pop.push(m); burst(p.x,p.y,tag(S.addColor,1,60),14,170);
+    toast(`🐭 Added a ${furName(S.addColor)} mouse. How will it fare on ${r.light?'a light':'a dark'} rock?`);
+  } else if(S.hover){ burst(S.hover.x,S.hover.y,'rgba(255,255,255,.9)',6,90); }
+});
+
+/* histogram hover */
+const HG=$('hist');
+function histBin(e){ const r=HG.getBoundingClientRect(), x=(e.clientX-r.left)*HW/r.width, pl=40, pw=HW-80; const i=Math.floor((x-pl)/pw*BINS); return i>=0&&i<BINS ? i : -1; }
+function histMove(e){
+  const i=histBin(e); S.hlBin=i;
+  if(i<0){ hideTip(); return; }
+  const al=alive(), cnt=al.filter(m=>Math.min(BINS-1,Math.floor(m.c*BINS))===i).length;
+  showTip(`Fur ${(i/BINS).toFixed(2)}–${((i+1)/BINS).toFixed(2)}<br><b>${cnt}</b> mice (${Math.round(cnt/Math.max(1,al.length)*100)}%)`, e);
+}
+HG.addEventListener('pointermove', histMove);
+HG.addEventListener('pointerdown', histMove);
+HG.addEventListener('pointerleave', () => { S.hlBin=-1; hideTip(); });
+
+/* keyboard */
+document.addEventListener('keydown', e => {
+  const t=e.target.tagName; if(t==='INPUT'||t==='SELECT'||e.ctrlKey||e.metaKey||e.altKey) return;
+  if(e.key===' ' && t!=='BUTTON'){ e.preventDefault(); S.running ? stop() : start(); }
+  else if(e.key==='n'||e.key==='N') nextGen();
+  else if(e.key==='r'||e.key==='R') resetMice();
+  else if(e.key==='1') setTool('inspect'); else if(e.key==='2') setTool('paint');
+  else if(e.key==='3') setTool('hunt');    else if(e.key==='4') setTool('add');
+});
+
+/* ---------- main loop ---------- */
+let last=performance.now(), time=0;
+function frame(now){
+  const dt=Math.min(.05,(now-last)/1000); last=now; time+=dt;
+  update(dt); drawHabitat(time); drawHist(); drawTrend();
+  requestAnimationFrame(frame);
+}
+
+buildBackground();
+genRocks();
+resetMice();
+requestAnimationFrame(frame);
+window.__sim = {S,P,nextGen,start,stop,setTool};
+})();
+</script>
+</body>
+</html>

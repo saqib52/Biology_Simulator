@@ -1,0 +1,369 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>PAH Mutation Simulator</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500&display=swap">
+<style>
+/* Layout: a two-column bench (controls left, live liver cell + readouts right) with the blood Phe chart and class notes below; one column on phones, cell first. */
+:root{
+  --bg:#F2F5F1; --surface:#FFFFFF; --fg:#18211D; --muted:#586861; --line:#D3DBD4;
+  --accent:#0E7A69; --accent-fg:#FFFFFF;
+  --phe:#D4552B; --tyr:#2C6CB4; --mis:#CC3333; --deg:#A96F0B;
+  --ok:#0B6B5C; --warn:#8A5A06; --bad:#B3321F;
+  --ok-bg:#DCEFE9; --warn-bg:#F5E8CC; --bad-bg:#F6DAD5;
+  --font-display:'Bricolage Grotesque','Segoe UI',system-ui,sans-serif;
+  --font-body:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --font-mono:'IBM Plex Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0F1613; --surface:#17211C; --fg:#E6EDE8; --muted:#9AAAA1; --line:#2A3830;
+    --accent:#3FC2A9; --accent-fg:#08130F;
+    --phe:#F0805A; --tyr:#6EA8E8; --mis:#F26A6A; --deg:#E0A23A;
+    --ok:#6FD9C2; --warn:#E8B04E; --bad:#F59A8B;
+    --ok-bg:#17382F; --warn-bg:#3A2F14; --bad-bg:#42201B;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0F1613; --surface:#17211C; --fg:#E6EDE8; --muted:#9AAAA1; --line:#2A3830;
+  --accent:#3FC2A9; --accent-fg:#08130F;
+  --phe:#F0805A; --tyr:#6EA8E8; --mis:#F26A6A; --deg:#E0A23A;
+  --ok:#6FD9C2; --warn:#E8B04E; --bad:#F59A8B;
+  --ok-bg:#17382F; --warn-bg:#3A2F14; --bad-bg:#42201B;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--font-body);font-size:15px;line-height:1.55;
+  padding-block:28px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:1080px;margin:0 auto;display:flex;flex-direction:column;gap:28px}
+h1,h2{font-family:var(--font-display);font-weight:700;letter-spacing:-0.01em;text-wrap:balance;margin:0}
+h1{font-size:clamp(1.8rem,5vw,2.6rem);line-height:1.05}
+h2{font-size:1.15rem}
+p{margin:0}
+.eyebrow{font-family:var(--font-mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.lede{max-width:62ch;color:var(--muted);margin-top:10px}
+header{display:flex;flex-direction:column;gap:8px}
+
+.bench{display:grid;grid-template-columns:minmax(0,340px) minmax(0,1fr);gap:28px;align-items:start}
+.controls,.stage{display:flex;flex-direction:column;gap:18px;min-width:0}
+.label{font-family:var(--font-mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+
+.presets{display:flex;flex-wrap:wrap;gap:8px}
+.presets button{font:inherit;font-size:13px;padding:6px 11px;border-radius:6px;border:1px solid var(--line);background:var(--surface);color:var(--fg);cursor:pointer}
+.presets button:hover{border-color:var(--accent)}
+.presets button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
+button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.slider{display:flex;flex-direction:column;gap:4px}
+.slider .top{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.slider b{font-weight:500}
+.slider .val{font-family:var(--font-mono);font-size:14px;font-variant-numeric:tabular-nums}
+.slider small{color:var(--muted);font-size:12.5px}
+.slider input{width:100%;margin:6px 0 0;accent-color:var(--accent)}
+.sliders{display:flex;flex-direction:column;gap:16px}
+
+.readouts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.readouts>div{border-top:2px solid var(--line);padding-top:8px;min-width:0}
+.readouts strong{display:block;font-family:var(--font-display);font-size:1.5rem;font-weight:700;line-height:1.15;font-variant-numeric:tabular-nums}
+.readouts .unit{font-family:var(--font-mono);font-size:12px;color:var(--muted);font-weight:400}
+.pheno{display:inline-block;font-family:var(--font-body)!important;font-size:.95rem!important;font-weight:500!important;padding:3px 10px;border-radius:6px;margin-top:2px}
+.pheno.ok{background:var(--ok-bg);color:var(--ok)}
+.pheno.warn{background:var(--warn-bg);color:var(--warn)}
+.pheno.bad{background:var(--bad-bg);color:var(--bad)}
+
+.canvasbox{background:var(--surface);border-radius:12px;padding:6px}
+canvas{display:block;width:100%;height:auto;max-width:100%}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12.5px;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.sw{display:inline-block;width:10px;height:10px;flex:none}
+.sw.c{border-radius:50%}
+.sw.dia{transform:rotate(45deg)}
+.sw.dash{border:1.5px dashed var(--muted);border-radius:50%;background:none}
+.counts{display:flex;flex-wrap:wrap;align-items:center;gap:6px 22px;font-size:13px;color:var(--muted)}
+.counts b{font-family:var(--font-mono);font-weight:500;color:var(--fg);font-variant-numeric:tabular-nums}
+.counts button{margin-left:auto;font:inherit;font-size:13px;padding:4px 12px;border-radius:6px;border:1px solid var(--line);background:var(--surface);color:var(--fg);cursor:pointer}
+.counts button:hover{border-color:var(--accent)}
+.msg{font-size:14px;color:var(--muted);max-width:68ch}
+
+.chart{display:flex;flex-direction:column;gap:10px}
+.notes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:28px;border-top:1px solid var(--line);padding-top:22px}
+.notes>div{display:flex;flex-direction:column;gap:10px;min-width:0}
+.notes ol,.notes ul{margin:0;padding-left:1.2em;display:flex;flex-direction:column;gap:8px}
+.notes li{max-width:62ch}
+
+@media (max-width:860px){
+  .bench{grid-template-columns:minmax(0,1fr)}
+  .stage{order:-1}
+  .notes{grid-template-columns:minmax(0,1fr)}
+}
+@media (max-width:520px){
+  .readouts{grid-template-columns:minmax(0,1fr);gap:10px}
+}
+</style>
+
+<main class="wrap">
+  <header>
+    <nav style="margin-bottom:4px;">
+      <a href="index.html" style="display:inline-flex;align-items:center;gap:6px;font-family:var(--font-mono);font-size:12px;text-decoration:none;color:var(--accent);font-weight:600;letter-spacing:0.04em;text-transform:uppercase;">
+        &larr; Back to Simulations Library
+      </a>
+    </nav>
+    <p class="eyebrow">Liver cell · PAH gene · phenylalanine to tyrosine</p>
+    <h1>PAH Mutation Simulator</h1>
+    <p class="lede">Phenylalanine hydroxylase (PAH) converts phenylalanine (Phe) to tyrosine. Change how much enzyme is made, how well it folds, how long it lasts and how fast it works, then watch blood Phe respond.</p>
+  </header>
+
+  <section class="bench">
+    <div class="controls">
+      <div>
+        <p class="label" style="margin-bottom:8px">Mutation presets</p>
+        <div class="presets" id="presets">
+          <button type="button" data-v="100,100,100,100">Normal PAH</button>
+          <button type="button" data-v="40,100,100,100">Reduced expression</button>
+          <button type="button" data-v="100,45,90,100">Misfolding mutation</button>
+          <button type="button" data-v="100,100,35,100">Unstable enzyme</button>
+          <button type="button" data-v="100,100,100,25">Damaged active site</button>
+          <button type="button" data-v="100,85,85,85">Mild combined</button>
+          <button type="button" data-v="5,100,100,100">Null allele</button>
+        </div>
+      </div>
+      <div class="sliders">
+        <p class="label">Enzyme properties, % of normal</p>
+        <div class="slider"><div class="top"><label for="sP"><b>Enzyme production</b></label><span class="val" id="vP">100%</span></div><small>Transcription, splicing and translation</small><input type="range" id="sP" min="0" max="100" step="1" value="100"></div>
+        <div class="slider"><div class="top"><label for="sF"><b>Correct folding</b></label><span class="val" id="vF">100%</span></div><small>Share of protein that folds properly</small><input type="range" id="sF" min="0" max="100" step="1" value="100"></div>
+        <div class="slider"><div class="top"><label for="sS"><b>Enzyme stability</b></label><span class="val" id="vS">100%</span></div><small>Share that escapes early degradation</small><input type="range" id="sS" min="0" max="100" step="1" value="100"></div>
+        <div class="slider"><div class="top"><label for="sC"><b>Catalytic activity</b></label><span class="val" id="vC">100%</span></div><small>Rate per enzyme (kcat, active site)</small><input type="range" id="sC" min="0" max="100" step="1" value="100"></div>
+      </div>
+    </div>
+
+    <div class="stage">
+      <div class="readouts">
+        <div><span class="label">Residual PAH activity</span><strong id="mA">100%</strong></div>
+        <div><span class="label">Blood Phe, steady state</span><strong><span id="mP">50</span> <span class="unit">µmol/L</span></strong></div>
+        <div><span class="label">Predicted phenotype</span><strong><span class="pheno ok" id="mK">Normal range</span></strong></div>
+      </div>
+      <div class="canvasbox">
+        <canvas id="cell" width="1360" height="460" role="img" aria-label="Liver cell with PAH enzymes converting phenylalanine to tyrosine"></canvas>
+      </div>
+      <div class="legend">
+        <span><i class="sw c" style="background:var(--phe)"></i>Phenylalanine</span>
+        <span><i class="sw c" style="background:var(--tyr)"></i>Tyrosine</span>
+        <span><i class="sw c" style="background:var(--accent)"></i>Working PAH</span>
+        <span><i class="sw dia" style="background:var(--mis)"></i>Misfolded</span>
+        <span><i class="sw c" style="background:var(--deg);width:7px;height:7px"></i>Degraded</span>
+        <span><i class="sw dash"></i>Never made</span>
+      </div>
+      <div class="counts">
+        <span>Phe in cell <b id="cPhe">0</b></span>
+        <span>Tyr made <b id="cTyr">0</b></span>
+        <span>Working enzymes <b id="cEnz">40/40</b></span>
+        <button type="button" id="pause">Pause</button>
+      </div>
+      <p class="msg" id="msg" aria-live="polite"></p>
+    </div>
+  </section>
+
+  <section class="chart">
+    <h2>Blood phenylalanine over time</h2>
+    <div class="canvasbox">
+      <canvas id="chart" width="1360" height="400" role="img" aria-label="Line chart of blood phenylalanine over time with thresholds at 120, 360 and 1200 micromoles per litre"></canvas>
+    </div>
+    <p class="msg">Dashed lines mark 120 µmol/L (top of the normal range), 360 µmol/L (mild hyperphenylalaninemia) and 1200 µmol/L (classic PKU).</p>
+  </section>
+
+  <section class="notes">
+    <div>
+      <h2>Questions for the class</h2>
+      <ol>
+        <li>Set correct folding to 40% and leave the rest at 100%. Which enzymes disappear from the grid, and why do misfolded and degraded ones look different?</li>
+        <li>Lower only catalytic activity. The enzyme count stays at 40/40, so why does blood Phe still rise?</li>
+        <li>Load Mild combined. Three 15% losses leave about 61% of activity and blood Phe just under 120 µmol/L. Why do the losses multiply instead of add?</li>
+        <li>Which single slider, taken to 5%, does the most damage? Is any one slider worse than the others?</li>
+      </ol>
+    </div>
+    <div>
+      <h2>About the model</h2>
+      <ul>
+        <li>Residual activity is production × folding × stability × catalytic activity.</li>
+        <li>Blood Phe settles where dietary Phe intake equals Michaelis-Menten clearance by the remaining enzyme.</li>
+        <li>The numbers are illustrative. Real Phe levels also depend on diet, BH4 cofactor response and which PAH variants a patient carries.</li>
+        <li>The cell view shows 40 enzymes as a grid for clarity. Real hepatocytes hold far more.</li>
+      </ul>
+    </div>
+  </section>
+</main>
+
+<script>
+var $=function(i){return document.getElementById(i);};
+var N=40,perm=[],seed=7;
+for(var i=0;i<N;i++)perm.push(i);
+for(var i=N-1;i>0;i--){seed=(seed*9301+49297)%233280;var j=Math.floor(seed/233280*(i+1));var t=perm[i];perm[i]=perm[j];perm[j]=t;}
+
+var sP=$('sP'),sF=$('sF'),sS=$('sS'),sC=$('sC');
+var P=1,F=1,S=1,C=1,A=1,Vm=3;
+var slots=[],phe=[],tyr=[],tyrCount=0,frame=0,paused=false;
+var W=680,H=230,CW=680,CH=200;
+var cv=$('cell'),cx=cv.getContext('2d'),ch=$('chart'),cc=ch.getContext('2d');
+cx.scale(2,2);cc.scale(2,2);
+var MONO="'IBM Plex Mono',ui-monospace,monospace",SANS="'IBM Plex Sans',system-ui,sans-serif";
+
+var T={},sig='';
+function readTokens(){
+  var cs=getComputedStyle(document.documentElement);
+  ['--muted','--line','--fg','--accent','--phe','--tyr','--mis','--deg'].forEach(function(n){T[n]=cs.getPropertyValue(n).trim();});
+  return T['--fg']+T['--accent']+T['--phe'];
+}
+sig=readTokens();
+function epos(i){return{x:340+(i%10)*31,y:52+Math.floor(i/10)*44};}
+
+function setPreset(v){
+  var a=v.split(',');
+  sP.value=a[0];sF.value=a[1];sS.value=a[2];sC.value=a[3];
+  update();
+}
+function syncPresets(){
+  var cur=[sP.value,sF.value,sS.value,sC.value].join(',');
+  var btns=document.querySelectorAll('#presets button');
+  for(var i=0;i<btns.length;i++)btns[i].setAttribute('aria-pressed',btns[i].getAttribute('data-v')===cur?'true':'false');
+}
+
+function update(){
+  P=sP.value/100;F=sF.value/100;S=sS.value/100;C=sC.value/100;
+  $('vP').textContent=sP.value+'%';$('vF').textContent=sF.value+'%';$('vS').textContent=sS.value+'%';$('vC').textContent=sC.value+'%';
+  var prod=Math.round(N*P),fold=Math.round(prod*F),stab=Math.round(fold*S);
+  for(var k=0;k<N;k++){
+    var r=perm[k],st='none';
+    if(k<stab)st='ok';else if(k<fold)st='deg';else if(k<prod)st='mis';
+    slots[r]=st;
+  }
+  A=P*F*S*C;Vm=3*A;
+  var cap=2400,Pss=Vm>1.001?100/(Vm-1):Infinity;
+  $('mA').textContent=Math.round(A*100)+'%';
+  $('mP').textContent=Pss>=cap?'> 2400':Math.round(Pss);
+  var kind,cls;
+  if(Pss<=120){kind='Normal range';cls='ok';}
+  else if(Pss<=360){kind='Mild hyperphenylalaninemia';cls='warn';}
+  else if(Pss<=1200){kind='Mild to moderate PKU';cls='bad';}
+  else{kind='Classic PKU';cls='bad';}
+  var k2=$('mK');k2.textContent=kind;k2.className='pheno '+cls;
+  $('cEnz').textContent=stab+'/'+N;
+  var f=[['production',P],['folding',F],['stability',S],['catalytic activity',C]];
+  f.sort(function(a,b){return a[1]-b[1];});
+  $('msg').textContent=f[0][1]>=0.995
+    ?'All four properties are normal, so Phe is cleared as fast as it enters and blood Phe stays low.'
+    :'Biggest loss: '+f[0][0]+' ('+Math.round(f[0][1]*100)+'% of normal). The four effects multiply, so together they leave '+Math.round(A*100)+'% residual activity.';
+  phe=[];tyr=[];tyrCount=0;
+  for(var s=0;s<90;s++)step();
+  drawChart();draw();syncPresets();counts();
+}
+
+function drawChart(){
+  var w=CW,h=CH,L=52,R=14,Tp=14,B=28,cap=2400;
+  cc.clearRect(0,0,w,h);
+  var col=T['--muted'];
+  cc.font='11px '+MONO;cc.fillStyle=col;cc.strokeStyle=T['--line'];cc.lineWidth=1;
+  function Y(v){return Tp+(h-Tp-B)*(1-v/cap);}
+  function X(t){return L+(w-L-R)*t/60;}
+  [[120,'120'],[360,'360'],[1200,'1200'],[2400,'2400']].forEach(function(a){
+    cc.setLineDash([4,4]);cc.beginPath();cc.moveTo(L,Y(a[0]));cc.lineTo(w-R,Y(a[0]));cc.stroke();cc.setLineDash([]);
+    cc.textAlign='right';cc.fillText(a[1],L-6,Y(a[0])+4);
+  });
+  cc.strokeStyle=col;cc.beginPath();cc.moveTo(L,Y(0));cc.lineTo(w-R,Y(0));cc.stroke();
+  cc.textAlign='center';cc.fillText('Time after mutation (relative units)',(L+w-R)/2,h-6);
+  cc.save();cc.translate(11,(Tp+h-B)/2);cc.rotate(-Math.PI/2);cc.textAlign='center';cc.fillText('Blood Phe (µmol/L)',0,0);cc.restore();
+  var p=50,pts=[[X(0),Y(p)]];
+  for(var t=0.5;t<=60;t+=0.5){
+    p+=0.5*40*(1-Vm*p/(100+p));
+    if(p<0)p=0;if(p>cap)p=cap;
+    pts.push([X(t),Y(p)]);
+  }
+  var lc=p>360?T['--phe']:T['--tyr'];
+  cc.beginPath();cc.moveTo(pts[0][0],Y(0));
+  pts.forEach(function(q){cc.lineTo(q[0],q[1]);});
+  cc.lineTo(pts[pts.length-1][0],Y(0));cc.closePath();
+  cc.globalAlpha=0.12;cc.fillStyle=lc;cc.fill();cc.globalAlpha=1;
+  cc.beginPath();pts.forEach(function(q,i){if(i===0)cc.moveTo(q[0],q[1]);else cc.lineTo(q[0],q[1]);});
+  cc.strokeStyle=lc;cc.lineWidth=2.5;cc.stroke();
+  var e=pts[pts.length-1];
+  cc.fillStyle=lc;cc.beginPath();cc.arc(e[0],e[1],4,0,7);cc.fill();
+  cc.fillStyle=T['--fg'];cc.font='500 12px '+MONO;cc.textAlign='right';
+  var ly=e[1]<Tp+16?e[1]+18:e[1]-9;
+  cc.fillText((p>=cap?'2400+':Math.round(p))+' µmol/L',e[0]-8,ly);
+}
+
+function step(){
+  if(phe.length<150&&Math.random()<0.5)phe.push({x:14+Math.random()*40,y:34+Math.random()*(H-60),vx:0.4,vy:0});
+  for(var k=phe.length-1;k>=0;k--){
+    var q=phe[k];
+    q.vx+=(Math.random()-0.5)*0.5+0.015;q.vy+=(Math.random()-0.5)*0.5;
+    q.vx*=0.93;q.vy*=0.93;q.x+=q.vx*2;q.y+=q.vy*2;
+    if(q.x<12){q.x=12;q.vx=Math.abs(q.vx);}if(q.x>W-14){q.x=W-14;q.vx=-Math.abs(q.vx);}
+    if(q.y<32){q.y=32;q.vy=Math.abs(q.vy);}if(q.y>H-14){q.y=H-14;q.vy=-Math.abs(q.vy);}
+    var hit=false;
+    if(q.x>315&&C>0){
+      for(var i=0;i<N;i++){
+        if(slots[i]!=='ok')continue;
+        var e=epos(i),dx=q.x-e.x,dy=q.y-e.y;
+        if(dx*dx+dy*dy<190&&Math.random()<0.35*C){hit=true;break;}
+      }
+    }
+    if(hit){tyr.push({x:q.x,y:q.y,life:90});phe.splice(k,1);tyrCount++;}
+  }
+  for(var k=tyr.length-1;k>=0;k--){
+    var y=tyr[k];y.x+=0.6;y.y+=(Math.random()-0.5)*1.2;y.life--;
+    if(y.life<=0)tyr.splice(k,1);
+  }
+}
+
+function draw(){
+  cx.clearRect(0,0,W,H);
+  cx.strokeStyle=T['--muted'];cx.lineWidth=1;cx.beginPath();
+  if(cx.roundRect)cx.roundRect(4,4,W-8,H-8,16);else cx.rect(4,4,W-8,H-8);
+  cx.stroke();
+  cx.fillStyle=T['--muted'];cx.font='12px '+SANS;cx.textAlign='left';
+  cx.fillText('Liver cell (hepatocyte)',16,24);cx.fillText('PAH enzymes',328,24);
+  for(var i=0;i<N;i++){
+    var e=epos(i),s=slots[i];
+    if(s==='ok'){cx.globalAlpha=0.3+0.7*C;cx.fillStyle=T['--accent'];cx.beginPath();cx.arc(e.x,e.y,11,0,7);cx.fill();cx.globalAlpha=1;}
+    else if(s==='mis'){cx.fillStyle=T['--mis'];cx.save();cx.translate(e.x,e.y);cx.rotate(Math.PI/4+0.4);cx.fillRect(-8,-6,16,12);cx.restore();}
+    else if(s==='deg'){cx.fillStyle=T['--deg'];cx.beginPath();cx.arc(e.x,e.y,4,0,7);cx.fill();}
+    else{cx.strokeStyle=T['--muted'];cx.lineWidth=1;cx.setLineDash([3,3]);cx.beginPath();cx.arc(e.x,e.y,9,0,7);cx.stroke();cx.setLineDash([]);}
+  }
+  cx.fillStyle=T['--phe'];
+  for(var k=0;k<phe.length;k++){cx.beginPath();cx.arc(phe[k].x,phe[k].y,3.5,0,7);cx.fill();}
+  cx.fillStyle=T['--tyr'];
+  for(var k=0;k<tyr.length;k++){
+    var y=tyr[k];cx.globalAlpha=Math.min(1,y.life/40);
+    cx.beginPath();cx.arc(y.x,y.y,3.5,0,7);cx.fill();
+  }
+  cx.globalAlpha=1;
+}
+
+function counts(){$('cPhe').textContent=phe.length;$('cTyr').textContent=tyrCount;}
+
+function loop(){
+  frame++;
+  if(!paused){step();if(frame%8===0)counts();}
+  if(frame%30===0){
+    var s2=readTokens();
+    if(s2!==sig){sig=s2;drawChart();}
+  }
+  draw();
+  requestAnimationFrame(loop);
+}
+
+['sP','sF','sS','sC'].forEach(function(id){$(id).addEventListener('input',update);});
+document.querySelectorAll('#presets button').forEach(function(b){
+  b.addEventListener('click',function(){setPreset(b.getAttribute('data-v'));});
+});
+$('pause').addEventListener('click',function(){
+  paused=!paused;$('pause').textContent=paused?'Play':'Pause';
+});
+if(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches){
+  paused=true;$('pause').textContent='Play';
+}
+update();
+loop();
+</script>
+
+</body></html>
